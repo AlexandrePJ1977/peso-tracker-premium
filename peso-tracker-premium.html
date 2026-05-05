@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Peso Tracker">
+<meta name="theme-color" content="#0a0a0f">
+<title>Peso Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c28;--border:#2a2a3d;
+  --accent:#c8f564;--accent2:#6be8c8;--danger:#ff6b6b;
+  --text:#f0f0f8;--muted:#6b6b8a;
+  --serif:'DM Serif Display',Georgia,serif;
+  --mono:'DM Mono',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);overflow:hidden;}
+#app{height:100%;display:flex;flex-direction:column;padding:20px;gap:14px;}
+.kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;}
+.klabel{font-size:9px;color:var(--muted);margin-bottom:4px;}
+.kval{font-size:22px;}
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px;}
+.progress-wrap{
+  width:100%;
+  height:14px;
+  background:var(--surface);
+  border-radius:999px;
+  overflow:hidden;
+  border:1px solid var(--border);
+}
+.progress-bar{
+  height:100%;
+  width:0%;
+  border-radius:999px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  transition:width .6s cubic-bezier(.22,1,.36,1);
+  position:relative;
+}
+.progress-bar::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(120deg,transparent,rgba(255,255,255,0.25),transparent);
+  opacity:.4;
+}
+canvas{width:100%;height:200px;}
+input,button{padding:10px;border-radius:8px;border:none;}
+button{background:var(--accent);cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+<div class="kpi-row">
+  <div class="kpi"><div class="klabel">Peso Inicial</div><div class="kval" id="ki">—</div></div>
+  <div class="kpi"><div class="klabel">Peso Atual</div><div class="kval" id="ka">—</div></div>
+</div>
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+    <div style="font-size:10px;color:var(--muted);">Progresso até a meta</div>
+    <div id="metaLabel"></div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <div id="progressText" style="margin-top:10px;"></div>
+</div>
+
+<canvas id="chart"></canvas>
+
+<div class="card">
+  <input type="number" id="peso" placeholder="Peso (kg)">
+  <button onclick="add()">Adicionar</button>
+</div>
+
+</div>
+
+<script>
+var META_PESO = 80;
+var entries = [];
+
+function add(){
+  var v = parseFloat(document.getElementById('peso').value);
+  if(!v) return;
+  entries.push({weight:v});
+  document.getElementById('peso').value='';
+  render();
+}
+
+function render(){
+  if(!entries.length) return;
+
+  var f = entries[0].weight;
+  var l = entries[entries.length-1].weight;
+
+  document.getElementById('ki').textContent = f;
+  document.getElementById('ka').textContent = l;
+
+  updateProgressBar();
+  draw();
+}
+
+function updateProgressBar(){
+  var f = entries[0].weight;
+  var l = entries[entries.length-1].weight;
+
+  var progresso = ((f - l) / (f - META_PESO)) * 100;
+  progresso = Math.max(0, Math.min(100, progresso));
+
+  document.getElementById('progressBar').style.width = progresso + '%';
+  document.getElementById('metaLabel').textContent = 'Meta: ' + META_PESO + ' kg';
+
+  var restante = l - META_PESO;
+  var txt = progresso>=100 ? 'Meta atingida 🎯' :
+            'Faltam ' + restante.toFixed(1) + ' kg';
+
+  document.getElementById('progressText').textContent = txt;
+}
+
+function draw(){
+  var c = document.getElementById('chart');
+  var ctx = c.getContext('2d');
+  ctx.clearRect(0,0,c.width,c.height);
+
+  var w = c.width, h = c.height;
+
+  var pesos = entries.map(e=>e.weight);
+  var max = Math.max(...pesos, META_PESO);
+  var min = Math.min(...pesos, META_PESO);
+
+  function y(v){ return h - ((v-min)/(max-min))*h; }
+
+  ctx.beginPath();
+  pesos.forEach((p,i)=>{
+    var x = (i/(pesos.length-1))*w;
+    i===0?ctx.moveTo(x,y(p)):ctx.lineTo(x,y(p));
+  });
+  ctx.strokeStyle = '#c8f564';
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.setLineDash([5,5]);
+  ctx.moveTo(0,y(META_PESO));
+  ctx.lineTo(w,y(META_PESO));
+  ctx.strokeStyle = '#ff6b6b';
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+</script>
+
+</body>
+</html>
